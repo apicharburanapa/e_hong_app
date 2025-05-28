@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "917932283249",
+    "project_id": "ehongapp-6411d",
+    "storage_bucket": "ehongapp-6411d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:917932283249:android:f91882ad8f8eac1cfb52d0",
+        "android_client_info": {
+          "package_name": "com.example.e_hong_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC54lufi8QX4ELg22ksEBlITPNAA3O34Js"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
