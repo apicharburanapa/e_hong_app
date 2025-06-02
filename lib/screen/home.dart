@@ -1,9 +1,32 @@
 import 'package:e_hong_app/screen/login.dart';
 import 'package:e_hong_app/screen/register.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    initialization();
+  }
+
+  void initialization() async {
+    print('ready in 3...');
+    await Future.delayed(const Duration(seconds: 1));
+    print('ready in 2...');
+    await Future.delayed(const Duration(seconds: 1));
+    print('ready in 1...');
+    await Future.delayed(const Duration(seconds: 1));
+    print('go!');
+    FlutterNativeSplash.remove();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -11,7 +34,7 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           "ลงทะเบียน/เข้าสู่ระบบ",
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: Colors.black),
         ),
         backgroundColor: const Color.fromARGB(255, 230, 66, 55),
       ),
