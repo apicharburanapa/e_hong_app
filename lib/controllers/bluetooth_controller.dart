@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:get/get.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -18,49 +20,47 @@ class BluetoothController extends GetxController {
   }
 
   Future<void> ensureBluetoothOnThenScan() async {
-  await requestPermissions(); // สำคัญมาก!
+    await requestPermissions(); // สำคัญมาก!
 
-  bool? isEnabled = await FlutterBluetoothSerial.instance.isEnabled;
+    bool? isEnabled = await FlutterBluetoothSerial.instance.isEnabled;
 
-  if (isEnabled == null || !isEnabled) {
-    try {
-      await FlutterBluetoothSerial.instance.requestEnable();
-    } catch (e) {
-      Get.snackbar("Error", "ไม่สามารถเปิด Bluetooth ได้: $e");
-      return;
+    if (isEnabled == null || !isEnabled) {
+      try {
+        await FlutterBluetoothSerial.instance.requestEnable();
+      } catch (e) {
+        Get.snackbar("Error", "ไม่สามารถเปิด Bluetooth ได้: $e");
+        return;
+      }
     }
+
+    startScan();
   }
-
-  startScan();
-}
-
 
   void startScan() async {
     isConnecting.value = true;
     devices.clear();
-
     await requestPermissions();
+
     bool? isOn = await FlutterBluetoothSerial.instance.isEnabled;
-    if (isOn == null || !isOn) {
+    if (!isOn!) {
       await FlutterBluetoothSerial.instance.requestEnable();
     }
 
-    FlutterBluetoothSerial.instance.startDiscovery().listen(
-      (r) {
-        if (devices.every((d) => d.address != r.device.address)) {
-          devices.add(r.device);
-        }
-      },
-      onError: (e) {
-        print("เกิดข้อผิดพลาดระหว่างสแกน: $e");
-        isConnecting.value = false;
-      },
-      onDone: () {
-        isConnecting.value = false;
-        print("สแกนเสร็จแล้ว");
-      },
-      cancelOnError: true,
-    );
+    final seenAddresses = <String>{};
+
+    final StreamSubscription<BluetoothDiscoveryResult> subscription =
+        FlutterBluetoothSerial.instance.startDiscovery().listen((r) {
+          if (!seenAddresses.contains(r.device.address)) {
+            seenAddresses.add(r.device.address);
+            devices.add(r.device);
+          }
+        });
+
+    // หยุดการสแกนหลังจาก 5 วินาที
+    Future.delayed(Duration(seconds: 5), () async {
+      await subscription.cancel();
+      isConnecting.value = false;
+    });
   }
 
   Future<void> requestPermissions() async {

@@ -9,16 +9,14 @@ class AppPages {
   static const INITIAL = '/login';
 
   static final routes = [
-    GetPage(
-      name: '/login',
-      page: () => LoginPage(),
-      binding: AuthBinding(),
-    ),
+    GetPage(name: '/login', page: () => LoginPage(), binding: AuthBinding()),
     GetPage(
       name: '/home',
       page: () => HomePage(),
-      binding: BluetoothBinding(),
+      binding: BindingsBuilder(() {
+        AuthBinding().dependencies();
+        BluetoothBinding().dependencies();
+      }),
     ),
-  
   ];
 }
