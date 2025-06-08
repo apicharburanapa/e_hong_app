@@ -6,10 +6,10 @@ import '../widgets/device_tile.dart';
 
 class HomePage extends StatelessWidget {
   final AuthController authController = Get.find();
-  final BluetoothController btController = Get.find<BluetoothController>();
 
   @override
   Widget build(BuildContext context) {
+  final BluetoothController btController = Get.find<BluetoothController>();
     return Scaffold(
       appBar: AppBar(
         title: Text("Bluetooth เชื่อมต่อ"),

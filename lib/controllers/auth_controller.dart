@@ -16,7 +16,7 @@ class AuthController extends GetxController {
     final user = _firebaseService.currentUser;
     if (user != null) {
       currentUser.value = await _firebaseService.getUserData(user.uid);
-      Get.offAll(() => HomePage());
+       Get.offAllNamed('/home');
     } else {
       Get.offAll(() => LoginPage());
     }
@@ -29,7 +29,7 @@ class AuthController extends GetxController {
         final userModel = UserModel(uid: user.uid, email: user.email ?? '');
         await _firebaseService.saveUserData(userModel);
         currentUser.value = userModel;
-        Get.offAll(() => HomePage());
+          Get.offAllNamed('/home');
       }
     } catch (e) {
       Get.snackbar("สมัครสมาชิกล้มเหลว", e.toString(), snackPosition: SnackPosition.BOTTOM);
@@ -42,7 +42,7 @@ class AuthController extends GetxController {
       if (user != null) {
         final userModel = await _firebaseService.getUserData(user.uid);
         currentUser.value = userModel;
-        Get.offAll(() => HomePage());
+        Get.offAllNamed('/home');
       }
     } catch (e) {
       Get.snackbar("เข้าสู่ระบบล้มเหลว", e.toString(), snackPosition: SnackPosition.BOTTOM);

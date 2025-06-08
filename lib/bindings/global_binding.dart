@@ -6,6 +6,6 @@ class GlobalBinding extends Bindings {
   @override
   void dependencies() {
     Get.put(AuthController());           // Auth
-    Get.lazyPut(() => BluetoothController()); // Bluetooth
+    Get.put(() => BluetoothController()); // Bluetooth
   }
 }
