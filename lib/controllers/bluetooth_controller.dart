@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:get/get.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
@@ -29,7 +30,7 @@ class BluetoothController extends GetxController {
 
       final device = bonded.firstWhereOrNull((d) => d.address == lastAddress);
       if (device != null) {
-        connectToDevice(device); // 🔁 auto connect
+        connectToDevice(device);
       }
     }
   }
@@ -96,10 +97,46 @@ class BluetoothController extends GetxController {
     bluetoothService.send("UNLOCK");
   }
 
+  void sendCommand(int commandByte) {
+    if (bluetoothService.connection == null) {
+      Get.snackbar("ยังไม่ได้เชื่อมต่อ", "กรุณาเชื่อมต่อกับอุปกรณ์ก่อน");
+      return;
+    }
+
+    List<int> packet = List.filled(64, 0);
+
+    // Header
+    packet[0] = 0xA1;
+    packet[1] = 0x11;
+    packet[2] = 0xF1;
+
+    // Command
+    packet[3] = commandByte;
+
+    // Checksum (sum of byte 0..61)
+    int sum = 0;
+    for (int i = 0; i < 62; i++) {
+      sum += packet[i];
+    }
+    packet[62] = sum & 0xFF;
+
+    // End byte
+    packet[63] = 0xE1;
+
+    bluetoothService.connection!.output.add(Uint8List.fromList(packet));
+    bluetoothService.connection!.output.allSent.then((_) {
+      print("Sent command: $commandByte");
+    });
+  }
+
+  void activateConnect() => sendCommand(0x01);
+  void activateNow() => sendCommand(0x02);
+
   void disconnect() async {
     await bluetoothService.disconnect();
     isConnected.value = false;
     selectedDevice.value = null;
+    startScan();
   }
 
   Future<void> saveLastConnectedDevice(String address) async {
