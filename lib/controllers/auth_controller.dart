@@ -1,5 +1,4 @@
 import 'package:get/get.dart';
-import '../views/home_page.dart';
 import '../views/login_page.dart';
 import '../services/firebase_service.dart';
 import '../models/user_model.dart';

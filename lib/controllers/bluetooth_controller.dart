@@ -133,10 +133,10 @@ class BluetoothController extends GetxController {
   void activateNow() => sendCommand(0x02);
 
   void disconnect() async {
+    startScan();
     await bluetoothService.disconnect();
     isConnected.value = false;
     selectedDevice.value = null;
-    startScan();
   }
 
   Future<void> saveLastConnectedDevice(String address) async {
