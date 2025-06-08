@@ -2,35 +2,92 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final AuthController authController = Get.find();
 
-  LoginPage({super.key});
+  String? emailError;
+  String? passwordError;
+
+  bool isValidEmail(String email) {
+    return GetUtils.isEmail(email);
+  }
+
+  bool isValidPassword(String password) {
+    return password.length >= 6;
+  }
+
+  void validateAndLogin() {
+    setState(() {
+      emailError = null;
+      passwordError = null;
+    });
+
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+
+    bool hasError = false;
+
+    if (!isValidEmail(email)) {
+      emailError = "กรุณากรอกอีเมลให้ถูกต้อง เช่น name@example.com";
+      hasError = true;
+    }
+
+    if (!isValidPassword(password)) {
+      passwordError = "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร";
+      hasError = true;
+    }
+
+    if (!hasError) {
+      authController.login(email, password);
+    } else {
+      setState(() {});
+    }
+  }
+
+  void validateAndRegister() {
+    validateAndLogin(); 
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Login")),
+      appBar: AppBar(title: Text("เข้าสู่ระบบ")),
       body: Padding(
         padding: EdgeInsets.all(20),
         child: Column(
           children: [
-            TextField(controller: emailController, decoration: InputDecoration(labelText: "Email")),
-            TextField(controller: passwordController, decoration: InputDecoration(labelText: "Password"), obscureText: true),
+            TextField(
+              controller: emailController,
+              decoration: InputDecoration(
+                labelText: "อีเมล",
+                errorText: emailError,
+              ),
+            ),
+            TextField(
+              controller: passwordController,
+              decoration: InputDecoration(
+                labelText: "รหัสผ่าน",
+                errorText: passwordError,
+              ),
+              obscureText: true,
+            ),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () {
-                authController.login(emailController.text.trim(), passwordController.text.trim());
-              },
-              child: Text("Login"),
+              onPressed: validateAndLogin,
+              child: Text("เข้าสู่ระบบ"),
             ),
             TextButton(
-              onPressed: () {
-                authController.register(emailController.text.trim(), passwordController.text.trim());
-              },
-              child: Text("Register"),
+              onPressed: validateAndRegister,
+              child: Text("ลงชื่อเข้าใช้งาน"),
             ),
           ],
         ),
