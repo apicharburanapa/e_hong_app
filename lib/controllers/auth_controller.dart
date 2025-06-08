@@ -1,46 +1,57 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import '../views/home_page.dart';
 import '../views/login_page.dart';
+import '../services/firebase_service.dart';
+import '../models/user_model.dart';
 
 class AuthController extends GetxController {
-  static AuthController instance = Get.find();
-  late Rx<User?> user;
-  FirebaseAuth auth = FirebaseAuth.instance;
+  static AuthController get to => Get.find();
+
+  final _firebaseService = FirebaseService();
+  Rxn<UserModel> currentUser = Rxn<UserModel>();
 
   @override
-  void onReady() {
+  void onReady() async {
     super.onReady();
-    user = Rx<User?>(auth.currentUser);
-    user.bindStream(auth.userChanges());
-    ever(user, _handleAuthChanged);
-  }
-
-  void _handleAuthChanged(User? user) {
-    if (user == null) {
-      Get.offAll(() => LoginPage());
-    } else {
+    final user = _firebaseService.currentUser;
+    if (user != null) {
+      currentUser.value = await _firebaseService.getUserData(user.uid);
       Get.offAll(() => HomePage());
+    } else {
+      Get.offAll(() => LoginPage());
     }
   }
 
-  void register(String email, String password) async {
+  Future<void> register(String email, String password) async {
     try {
-      await auth.createUserWithEmailAndPassword(email: email, password: password);
+      final user = await _firebaseService.registerWithEmail(email, password);
+      if (user != null) {
+        final userModel = UserModel(uid: user.uid, email: user.email ?? '');
+        await _firebaseService.saveUserData(userModel);
+        currentUser.value = userModel;
+        Get.offAll(() => HomePage());
+      }
     } catch (e) {
-      Get.snackbar("Error", e.toString());
+      Get.snackbar("สมัครสมาชิกล้มเหลว", e.toString(), snackPosition: SnackPosition.BOTTOM);
     }
   }
 
-  void login(String email, String password) async {
+  Future<void> login(String email, String password) async {
     try {
-      await auth.signInWithEmailAndPassword(email: email, password: password);
+      final user = await _firebaseService.loginWithEmail(email, password);
+      if (user != null) {
+        final userModel = await _firebaseService.getUserData(user.uid);
+        currentUser.value = userModel;
+        Get.offAll(() => HomePage());
+      }
     } catch (e) {
-      Get.snackbar("Error", e.toString());
+      Get.snackbar("เข้าสู่ระบบล้มเหลว", e.toString(), snackPosition: SnackPosition.BOTTOM);
     }
   }
 
-  void logout() async {
-    await auth.signOut();
+  Future<void> logout() async {
+    await _firebaseService.logout();
+    currentUser.value = null;
+    Get.offAll(() => LoginPage());
   }
 }
