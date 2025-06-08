@@ -25,7 +25,7 @@ class _LoginPageState extends State<LoginPage> {
     return password.length >= 6;
   }
 
-  void validateAndLogin() {
+  bool validate() {
     setState(() {
       emailError = null;
       passwordError = null;
@@ -46,7 +46,13 @@ class _LoginPageState extends State<LoginPage> {
       hasError = true;
     }
 
-    if (!hasError) {
+    return hasError;
+  }
+
+  void validateAndLogin() {
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+    if (!validate()) {
       authController.login(email, password);
     } else {
       setState(() {});
@@ -54,7 +60,13 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void validateAndRegister() {
-    validateAndLogin(); 
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+    if (!validate()) {
+      authController.register(email, password);
+    } else {
+      setState(() {});
+    }
   }
 
   @override

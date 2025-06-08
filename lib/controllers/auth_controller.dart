@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../views/login_page.dart';
 import '../services/firebase_service.dart';
@@ -31,7 +32,12 @@ class AuthController extends GetxController {
           Get.offAllNamed('/home');
       }
     } catch (e) {
-      Get.snackbar("สมัครสมาชิกล้มเหลว", e.toString(), snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar(
+        "เข้าสู่ระบบล้มเหลว", 
+                e.toString(),
+        backgroundColor : const Color.fromARGB(255, 241, 104, 104), 
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM);
     }
   }
 
@@ -44,7 +50,12 @@ class AuthController extends GetxController {
         Get.offAllNamed('/home');
       }
     } catch (e) {
-      Get.snackbar("เข้าสู่ระบบล้มเหลว", e.toString(), snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar(
+        "เข้าสู่ระบบล้มเหลว", 
+                e.toString(),
+        backgroundColor : const Color.fromARGB(255, 241, 104, 104), 
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM);
     }
   }
 

@@ -32,18 +32,19 @@ class FirebaseService {
 
   String _mapFirebaseError(FirebaseAuthException e) {
     switch (e.code) {
-      case 'user-not-found':
-        return 'ไม่มีบัญชีนี้ในระบบ';
-      case 'wrong-password':
-        return 'รหัสผ่านไม่ถูกต้อง';
+      case 'too-many-requests':
+        return 'บล็อกการใช้งานจากอุปกรณ์ของคุณชั่วคราว เนื่องจากตรวจพบ พฤติกรรมที่ผิดปกติ';
+      case 'invalid-credential':
+        return 'ข้อมูลลงชื่อเข้าใช้ไม่ถูกต้อง';
       case 'invalid-email':
         return 'รูปแบบอีเมลไม่ถูกต้อง';
       case 'email-already-in-use':
         return 'อีเมลนี้ถูกใช้งานไปแล้ว';
       default:
-        return 'เกิดข้อผิดพลาด: ${e.message}';
+        return 'เกิดข้อผิดพลาด: ${e.message}';  // <-- สำคัญ
     }
   }
+
 
   Future<void> logout() async {
     await _auth.signOut();
