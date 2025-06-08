@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:get/get.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/bluetooth_service.dart';
 
 class BluetoothController extends GetxController {
@@ -17,6 +18,20 @@ class BluetoothController extends GetxController {
   void onInit() {
     super.onInit();
     ensureBluetoothOnThenScan();
+    autoReconnect();
+  }
+
+  Future<void> autoReconnect() async {
+    String? lastAddress = await getLastConnectedDeviceAddress();
+
+    if (lastAddress != null) {
+      List<BluetoothDevice> bonded = await bluetoothService.getBondedDevices();
+
+      final device = bonded.firstWhereOrNull((d) => d.address == lastAddress);
+      if (device != null) {
+        connectToDevice(device); // 🔁 auto connect
+      }
+    }
   }
 
   Future<void> ensureBluetoothOnThenScan() async {
@@ -77,19 +92,6 @@ class BluetoothController extends GetxController {
     }
   }
 
-  void connectToDevice(BluetoothDevice device) async {
-    try {
-      isConnecting.value = true;
-      await bluetoothService.connect(device);
-      selectedDevice.value = device;
-      isConnected.value = true;
-    } catch (e) {
-      Get.snackbar("เชื่อมต่อไม่สำเร็จ", e.toString());
-    } finally {
-      isConnecting.value = false;
-    }
-  }
-
   void sendUnlockCommand() {
     bluetoothService.send("UNLOCK");
   }
@@ -98,5 +100,30 @@ class BluetoothController extends GetxController {
     await bluetoothService.disconnect();
     isConnected.value = false;
     selectedDevice.value = null;
+  }
+
+  Future<void> saveLastConnectedDevice(String address) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('last_device', address);
+  }
+
+  Future<String?> getLastConnectedDeviceAddress() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('last_device');
+  }
+
+  void connectToDevice(BluetoothDevice device) async {
+    try {
+      isConnecting.value = true;
+      await bluetoothService.connect(device);
+      selectedDevice.value = device;
+      isConnected.value = true;
+
+      await saveLastConnectedDevice(device.address);
+    } catch (e) {
+      Get.snackbar("เชื่อมต่อไม่สำเร็จ", e.toString());
+    } finally {
+      isConnecting.value = false;
+    }
   }
 }
