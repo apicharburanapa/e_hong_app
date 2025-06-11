@@ -127,81 +127,61 @@ class BluetoothController extends GetxController {
     // แสดงข้อมูลที่รับมาให้ผู้ใช้เห็น (สำหรับ debug)
     Get.snackbar(
       "📥 ข้อมูลที่รับมา",
-      "Length: ${data.length} bytes\nHex: $hexData",
+      "Length: ${data.length} bytes\nHex: ${hexData.length > 50 ? hexData.substring(0, 50) + '...' : hexData}",
       backgroundColor: Colors.blue.withOpacity(0.8),
       colorText: Colors.white,
       duration: Duration(seconds: 5),
       snackPosition: SnackPosition.TOP,
     );
     
-    // TODO: ปรับแต่งเงื่อนไขตามรูปแบบการตอบกลับจริงของอุปกรณ์
-    // ตัวอย่างการตรวจสอบรูปแบบต่างๆ:
-    
-    // ตัวอย่างที่ 1: ถ้าอุปกรณ์ส่ง packet แบบเดียวกับที่เราส่งไป
-    if (data.length >= 4 && 
-        data[0] == 0xA1 && 
-        data[1] == 0x11 && 
-        data[2] == 0xF1 && 
-        data[3] == 0x01) { // 0x01 คือ response สำหรับ Connect command
+    // ตรวจสอบรูปแบบการตอบกลับจากอุปกรณ์จริง
+    // รูปแบบที่ได้รับ: A2 F1 11 [command] 00 00 ... [checksum] E2
+    if (data.length == 64 && 
+        data[0] == 0xA2 &&  // Header byte 1
+        data[1] == 0xF1 &&  // Header byte 2  
+        data[2] == 0x11 &&  // Header byte 3
+        data[63] == 0xE2) { // End byte
       
-      if (_validateChecksum(data)) {
-        _handleConnectResponse("รูปแบบ Packet เต็ม");
-        return;
-      }
-    }
-    
-    // ตัวอย่างที่ 2: ถ้าอุปกรณ์ส่งข้อความแบบ string
-    try {
-      String textData = String.fromCharCodes(data);
-      print("📝 Text data: '$textData'");
+      int responseCommand = data[3];
+      print("📋 Valid response packet - Command: 0x${responseCommand.toRadixString(16).padLeft(2, '0').toUpperCase()}");
       
-      if (textData.contains("CONNECT_OK") || 
-          textData.contains("OK") || 
-          textData.contains("SUCCESS")) {
-        _handleConnectResponse("รูปแบบ Text: $textData");
+      // ตรวจสอบ checksum
+      if (_validateResponseChecksum(data)) {
+        // ตรวจสอบว่าเป็นการตอบกลับจากคำสั่งไหน
+        if (responseCommand == 0x01) {
+          // ตอบกลับจากคำสั่ง Activate Connect
+          _handleConnectResponse("Connect Command (0x01)", responseCommand);
+        } else if (responseCommand == 0x02) {
+          // ตอบกลับจากคำสั่ง Activate Now
+          _handleActivateResponse("Activate Now (0x02)", responseCommand);
+        } else if (responseCommand == 0x99) {
+          // ตอบกลับจากคำสั่งทดสอบ
+          _handleTestResponse("Test Command (0x99)", responseCommand);
+        } else {
+          // คำสั่งอื่นๆ
+          _handleGeneralResponse("Unknown Command", responseCommand);
+        }
         return;
+      } else {
+        print("❌ Checksum ไม่ถูกต้อง");
+        Get.snackbar(
+          "❌ ข้อผิดพลาด",
+          "Checksum ของข้อมูลไม่ถูกต้อง",
+          backgroundColor: Colors.red.withOpacity(0.8),
+          colorText: Colors.white,
+          duration: Duration(seconds: 3),
+          snackPosition: SnackPosition.BOTTOM,
+        );
       }
-    } catch (e) {
-      // ไม่ใช่ text data
+    } else {
+      print("⚠️ รูปแบบข้อมูลไม่ตรงกับที่คาดหวัง");
+      print("Expected: 64 bytes, A2 F1 11 [cmd] ... E2");
+      print("Received: ${data.length} bytes, ${data.take(4).map((b) => b.toRadixString(16).padLeft(2, '0').toUpperCase()).join(' ')} ... ${data.length > 0 ? data[data.length-1].toRadixString(16).padLeft(2, '0').toUpperCase() : ''}");
     }
-    
-    // ตัวอย่างที่ 3: ถ้าอุปกรณ์ส่งแค่ byte เดียว
-    if (data.length == 1) {
-      if (data[0] == 0x01 || data[0] == 0xFF || data[0] == 0xAA) {
-        _handleConnectResponse("รูปแบบ Single Byte: 0x${data[0].toRadixString(16).padLeft(2, '0').toUpperCase()}");
-        return;
-      }
-    }
-    
-    // ตัวอย่างที่ 4: ถ้าอุปกรณ์ส่งแค่ 2-4 bytes
-    if (data.length >= 2 && data.length <= 4) {
-      // เช็ครูปแบบที่เป็นไปได้
-      if (data[0] == 0xAA && data[1] == 0xBB) {
-        _handleConnectResponse("รูปแบบ Header AA BB");
-        return;
-      }
-    }
-    
-    print("⚠️ ไม่สามารถระบุรูปแบบการตอบกลับได้ - กรุณาตรวจสอบข้อมูลด้านบน");
   }
   
-  // ฟังก์ชันแยกสำหรับจัดการเมื่อได้รับการตอบกลับที่ถูกต้อง
-  void _handleConnectResponse(String responseType) {
-    isConnectResponseReceived.value = true;
-    canActivate.value = true;
-    
-    Get.snackbar(
-      "เชื่อมต่อสำเร็จ",
-      "✅ อุปกรณ์ตอบกลับแล้ว ($responseType)\nสามารถใช้งาน Activate ได้",
-      backgroundColor: Colors.green.withOpacity(0.8),
-      colorText: Colors.white,
-      duration: Duration(seconds: 4),
-      snackPosition: SnackPosition.BOTTOM,
-    );
-  }
-
-  // ฟังก์ชันตรวจสอบ checksum
-  bool _validateChecksum(Uint8List data) {
+  // ฟังก์ชันตรวจสอบ checksum สำหรับ response
+  bool _validateResponseChecksum(Uint8List data) {
     if (data.length < 64) return false;
     
     int sum = 0;
@@ -209,7 +189,61 @@ class BluetoothController extends GetxController {
       sum += data[i];
     }
     
-    return (sum & 0xFF) == data[62] && data[63] == 0xE1;
+    bool isValid = (sum & 0xFF) == data[62];
+    print("🔍 Checksum validation: calculated=0x${(sum & 0xFF).toRadixString(16).padLeft(2, '0').toUpperCase()}, received=0x${data[62].toRadixString(16).padLeft(2, '0').toUpperCase()}, valid=$isValid");
+    
+    return isValid;
+  }
+  
+  // ฟังก์ชันแยกสำหรับจัดการเมื่อได้รับการตอบกลับจากคำสั่ง Connect
+  void _handleConnectResponse(String responseType, int commandByte) {
+    isConnectResponseReceived.value = true;
+    canActivate.value = true;
+    
+    Get.snackbar(
+      "🔌 Connect สำเร็จ",
+      "✅ อุปกรณ์ตอบกลับคำสั่ง Connect แล้ว\n($responseType)\nสามารถใช้งาน Activate Now ได้",
+      backgroundColor: Colors.green.withOpacity(0.8),
+      colorText: Colors.white,
+      duration: Duration(seconds: 4),
+      snackPosition: SnackPosition.BOTTOM,
+    );
+  }
+  
+  // ฟังก์ชันจัดการการตอบกลับจาก Activate Now
+  void _handleActivateResponse(String responseType, int commandByte) {
+    Get.snackbar(
+      "⚡ Activate สำเร็จ",
+      "✅ อุปกรณ์ตอบกลับคำสั่ง Activate Now แล้ว\n($responseType)",
+      backgroundColor: Colors.purple.withOpacity(0.8),
+      colorText: Colors.white,
+      duration: Duration(seconds: 3),
+      snackPosition: SnackPosition.BOTTOM,
+    );
+  }
+  
+  // ฟังก์ชันจัดการการตอบกลับจากคำสั่งทดสอบ
+  void _handleTestResponse(String responseType, int commandByte) {
+    Get.snackbar(
+      "🔧 ทดสอบสำเร็จ",
+      "✅ อุปกรณ์ตอบกลับคำสั่งทดสอบแล้ว\n($responseType)",
+      backgroundColor: Colors.orange.withOpacity(0.8),
+      colorText: Colors.white,
+      duration: Duration(seconds: 3),
+      snackPosition: SnackPosition.BOTTOM,
+    );
+  }
+  
+  // ฟังก์ชันจัดการการตอบกลับทั่วไป
+  void _handleGeneralResponse(String responseType, int commandByte) {
+    Get.snackbar(
+      "📡 ได้รับการตอบกลับ",
+      "✅ Command: 0x${commandByte.toRadixString(16).padLeft(2, '0').toUpperCase()}\n($responseType)",
+      backgroundColor: Colors.teal.withOpacity(0.8),
+      colorText: Colors.white,
+      duration: Duration(seconds: 3),
+      snackPosition: SnackPosition.BOTTOM,
+    );
   }
 
   void sendUnlockCommand() {

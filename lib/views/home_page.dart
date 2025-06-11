@@ -74,7 +74,7 @@ class HomePage extends StatelessWidget {
                   SizedBox(height: 30),
                   
                   // ขั้นตอนที่ 1: Connect
-                  Container(
+                  SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: btController.isConnectResponseReceived.value 
