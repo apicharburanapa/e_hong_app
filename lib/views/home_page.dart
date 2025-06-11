@@ -9,7 +9,7 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-  final BluetoothController btController = Get.find<BluetoothController>();
+    final BluetoothController btController = Get.find<BluetoothController>();
     return Scaffold(
       appBar: AppBar(
         title: Text("Bluetooth เชื่อมต่อ"),
@@ -40,38 +40,247 @@ class HomePage extends StatelessWidget {
 
         if (btController.isConnected.value) {
           return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  "✅ เชื่อมต่อกับ: ${btController.selectedDevice.value?.name}",
-                ),
-                SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: btController.activateConnect,
-                  child: Text("🔌 Activate Connect"),
-                ),
-                ElevatedButton(
-                  onPressed: btController.activateNow,
-                  child: Text("⚡ Activate Now"),
-                ),
-                TextButton(
-                  onPressed: btController.disconnect,
-                  child: Text("ตัดการเชื่อมต่อ"),
-                ),
-              ],
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // แสดงสถานะการเชื่อมต่อ
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(Icons.bluetooth_connected, 
+                             color: Colors.green, size: 32),
+                        SizedBox(height: 8),
+                        Text(
+                          "✅ เชื่อมต่อกับ: ${btController.selectedDevice.value?.name ?? 'Unknown'}",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green[700],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  SizedBox(height: 30),
+                  
+                  // ขั้นตอนที่ 1: Connect
+                  Container(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: btController.isConnectResponseReceived.value 
+                          ? null 
+                          : btController.activateConnect,
+                      icon: Icon(btController.isConnectResponseReceived.value 
+                          ? Icons.check_circle 
+                          : Icons.electrical_services),
+                      label: Text(
+                        btController.isConnectResponseReceived.value 
+                            ? "🔌 Connect สำเร็จแล้ว" 
+                            : "🔌 Activate Connect",
+                        style: TextStyle(fontSize: 16),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: btController.isConnectResponseReceived.value 
+                            ? Colors.green 
+                            : Colors.blue,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  SizedBox(height: 15),
+                  
+                  // แสดงสถานะการรอ response
+                  if (!btController.isConnectResponseReceived.value && 
+                      btController.isConnected.value)
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                            ),
+                          ),
+                          SizedBox(width: 10),
+                          Text(
+                            "รอการตอบกลับจากอุปกรณ์...",
+                            style: TextStyle(
+                              color: Colors.orange[700],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  
+                  SizedBox(height: 15),
+                  
+                  // ขั้นตอนที่ 2: Activate Now
+                  Container(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: btController.canActivate.value 
+                          ? btController.activateNow 
+                          : null,
+                      icon: Icon(Icons.flash_on),
+                      label: Text(
+                        "⚡ Activate Now",
+                        style: TextStyle(fontSize: 16),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: btController.canActivate.value 
+                            ? Colors.orange 
+                            : Colors.grey,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  SizedBox(height: 20),
+                  
+                  // คำแนะนำ
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "📋 ขั้นตอนการใช้งาน:",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue[700],
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          "1. กด 'Activate Connect' เพื่อส่งคำสั่งเชื่อมต่อ\n"
+                          "2. รอให้อุปกรณ์ตอบกลับ (ปุ่มจะเปลี่ยนสี)\n"
+                          "3. กด 'Activate Now' เพื่อเปิดใช้งาน",
+                          style: TextStyle(
+                            color: Colors.blue[600],
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  SizedBox(height: 20),
+                  
+                  // ปุ่มตัดการเชื่อมต่อ
+                  TextButton.icon(
+                    onPressed: btController.disconnect,
+                    icon: Icon(Icons.bluetooth_disabled, color: Colors.red),
+                    label: Text(
+                      "ตัดการเชื่อมต่อ",
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         } else {
-          return ListView.builder(
-            itemCount: btController.devices.length,
-            itemBuilder: (context, index) {
-              final device = btController.devices[index];
-              return DeviceTile(
-                device: device,
-                onTap: () => btController.connectToDevice(device),
-              );
-            },
+          // แสดงรายการอุปกรณ์เมื่อยังไม่ได้เชื่อมต่อ
+          return Column(
+            children: [
+              Container(
+                padding: EdgeInsets.all(16),
+                margin: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.bluetooth_searching, color: Colors.blue),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        "🔍 ค้นหาอุปกรณ์ Bluetooth ใกล้เคียง",
+                        style: TextStyle(
+                          color: Colors.blue[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: btController.devices.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.bluetooth_disabled,
+                              size: 48,
+                              color: Colors.grey,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              "ไม่พบอุปกรณ์",
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            TextButton.icon(
+                              onPressed: btController.startScan,
+                              icon: Icon(Icons.refresh),
+                              label: Text("ค้นหาใหม่"),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: btController.devices.length,
+                        itemBuilder: (context, index) {
+                          final device = btController.devices[index];
+                          return DeviceTile(
+                            device: device,
+                            onTap: () => btController.connectToDevice(device),
+                          );
+                        },
+                      ),
+              ),
+            ],
           );
         }
       }),
