@@ -144,6 +144,37 @@ class HomePage extends StatelessWidget {
                     ],
                   ),
                   
+                  SizedBox(height: 10),
+                  
+                  // ปุ่มรีเซ็ตสถานะ
+                  if (btController.isWaitingResponse.value)
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          btController.resetWaitingState();
+                          Get.snackbar(
+                            "🔄 รีเซ็ต",
+                            "รีเซ็ตสถานะการรอการตอบกลับแล้ว",
+                            backgroundColor: Colors.grey.withOpacity(0.8),
+                            colorText: Colors.white,
+                            duration: Duration(seconds: 2),
+                            snackPosition: SnackPosition.BOTTOM,
+                          );
+                        },
+                        icon: Icon(Icons.refresh, size: 16),
+                        label: Text(
+                          "🔄 หยุดรอการตอบกลับ",
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.grey[700],
+                          side: BorderSide(color: Colors.grey),
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                        ),
+                      ),
+                    ),
+                  
                   SizedBox(height: 15),
                   
                   // แสดงสถานะการรอ response
@@ -179,10 +210,8 @@ class HomePage extends StatelessWidget {
                       ),
                     ),
                   
-                  SizedBox(height: 15),
-                  
                   // ขั้นตอนที่ 2: Activate Now
-                  Container(
+                  SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: btController.canActivate.value 

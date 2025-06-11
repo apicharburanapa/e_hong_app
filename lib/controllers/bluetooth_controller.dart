@@ -17,8 +17,11 @@ class BluetoothController extends GetxController {
   var isConnected = false.obs;
   var isConnectResponseReceived = false.obs; // เพิ่มตัวแปรสำหรับตรวจสอบการตอบกลับ
   var canActivate = false.obs; // เพิ่มตัวแปรสำหรับควบคุมการเปิดใช้งานปุ่ม Activate
+  var lastCommandSent = 0.obs; // เก็บคำสั่งสุดท้ายที่ส่งไป
+  var isWaitingResponse = false.obs; // ตรวจสอบว่ากำลังรอการตอบกลับ
 
   StreamSubscription<Uint8List>? _dataSubscription;
+  Timer? _responseTimeout; // Timer สำหรับ timeout
 
   @override
   void onInit() {
@@ -30,6 +33,7 @@ class BluetoothController extends GetxController {
   @override
   void onClose() {
     _dataSubscription?.cancel();
+    _responseTimeout?.cancel();
     super.onClose();
   }
 
@@ -157,6 +161,15 @@ class BluetoothController extends GetxController {
         } else if (responseCommand == 0x99) {
           // ตอบกลับจากคำสั่งทดสอบ
           _handleTestResponse("Test Command (0x99)", responseCommand);
+        } else if (responseCommand == 0xFF) {
+          // ตอบกลับจากคำสั่ง Acknowledge
+          _handleAckResponse("Acknowledge (0xFF)", responseCommand);
+        } else if (responseCommand == 0x00) {
+          // ตอบกลับจากคำสั่ง Complete
+          _handleCompleteResponse("Complete (0x00)", responseCommand);
+        } else if (responseCommand == 0xEE) {
+          // ตอบกลับจากคำสั่ง Stop
+          _handleStopResponse("Stop (0xEE)", responseCommand);
         } else {
           // คำสั่งอื่นๆ
           _handleGeneralResponse("Unknown Command", responseCommand);
@@ -197,6 +210,10 @@ class BluetoothController extends GetxController {
   
   // ฟังก์ชันแยกสำหรับจัดการเมื่อได้รับการตอบกลับจากคำสั่ง Connect
   void _handleConnectResponse(String responseType, int commandByte) {
+    // หยุดการรอการตอบกลับ
+    isWaitingResponse.value = false;
+    _responseTimeout?.cancel();
+    
     isConnectResponseReceived.value = true;
     canActivate.value = true;
     
@@ -212,18 +229,26 @@ class BluetoothController extends GetxController {
   
   // ฟังก์ชันจัดการการตอบกลับจาก Activate Now
   void _handleActivateResponse(String responseType, int commandByte) {
+    // หยุดการรอการตอบกลับ
+    isWaitingResponse.value = false;
+    _responseTimeout?.cancel();
+    
     Get.snackbar(
       "⚡ Activate สำเร็จ",
-      "✅ อุปกรณ์ตอบกลับคำสั่ง Activate Now แล้ว\n($responseType)",
+      "✅ อุปกรณ์ตอบกลับคำสั่ง Activate Now แล้ว\n($responseType)\n💡 ลองกดปุ่ม ACK, DONE หรือ STOP",
       backgroundColor: Colors.purple.withOpacity(0.8),
       colorText: Colors.white,
-      duration: Duration(seconds: 3),
+      duration: Duration(seconds: 5),
       snackPosition: SnackPosition.BOTTOM,
     );
   }
   
   // ฟังก์ชันจัดการการตอบกลับจากคำสั่งทดสอบ
   void _handleTestResponse(String responseType, int commandByte) {
+    // หยุดการรอการตอบกลับ
+    isWaitingResponse.value = false;
+    _responseTimeout?.cancel();
+    
     Get.snackbar(
       "🔧 ทดสอบสำเร็จ",
       "✅ อุปกรณ์ตอบกลับคำสั่งทดสอบแล้ว\n($responseType)",
@@ -236,12 +261,61 @@ class BluetoothController extends GetxController {
   
   // ฟังก์ชันจัดการการตอบกลับทั่วไป
   void _handleGeneralResponse(String responseType, int commandByte) {
+    // หยุดการรอการตอบกลับ
+    isWaitingResponse.value = false;
+    _responseTimeout?.cancel();
+    
     Get.snackbar(
       "📡 ได้รับการตอบกลับ",
       "✅ Command: 0x${commandByte.toRadixString(16).padLeft(2, '0').toUpperCase()}\n($responseType)",
       backgroundColor: Colors.teal.withOpacity(0.8),
       colorText: Colors.white,
       duration: Duration(seconds: 3),
+      snackPosition: SnackPosition.BOTTOM,
+    );
+  }
+  
+  // ฟังก์ชันจัดการการตอบกลับจาก Acknowledge
+  void _handleAckResponse(String responseType, int commandByte) {
+    isWaitingResponse.value = false;
+    _responseTimeout?.cancel();
+    
+    Get.snackbar(
+      "📨 ACK รับทราบ",
+      "✅ อุปกรณ์รับทราบคำสั่ง Acknowledge",
+      backgroundColor: Colors.teal.withOpacity(0.8),
+      colorText: Colors.white,
+      duration: Duration(seconds: 2),
+      snackPosition: SnackPosition.BOTTOM,
+    );
+  }
+  
+  // ฟังก์ชันจัดการการตอบกลับจาก Complete
+  void _handleCompleteResponse(String responseType, int commandByte) {
+    isWaitingResponse.value = false;
+    _responseTimeout?.cancel();
+    
+    Get.snackbar(
+      "✅ Complete รับทราบ",
+      "✅ อุปกรณ์รับทราบสัญญาณเสร็จสิ้น",
+      backgroundColor: Colors.green.withOpacity(0.8),
+      colorText: Colors.white,
+      duration: Duration(seconds: 2),
+      snackPosition: SnackPosition.BOTTOM,
+    );
+  }
+  
+  // ฟังก์ชันจัดการการตอบกลับจาก Stop
+  void _handleStopResponse(String responseType, int commandByte) {
+    isWaitingResponse.value = false;
+    _responseTimeout?.cancel();
+    
+    Get.snackbar(
+      "🛑 Stop รับทราบ",
+      "✅ อุปกรณ์หยุดการทำงานแล้ว",
+      backgroundColor: Colors.red.withOpacity(0.8),
+      colorText: Colors.white,
+      duration: Duration(seconds: 2),
       snackPosition: SnackPosition.BOTTOM,
     );
   }
@@ -253,6 +327,19 @@ class BluetoothController extends GetxController {
   void sendCommand(int commandByte, {String? successMessage}) {
     if (bluetoothService.connection == null) {
       Get.snackbar("ยังไม่ได้เชื่อมต่อ", "กรุณาเชื่อมต่อกับอุปกรณ์ก่อน");
+      return;
+    }
+
+    // ป้องกันการส่งคำสั่งซ้ำๆ ในช่วงเวลาสั้นๆ
+    if (isWaitingResponse.value) {
+      Get.snackbar(
+        "⏳ กำลังรอการตอบกลับ",
+        "กรุณารอให้คำสั่งก่อนหน้าเสร็จสิ้นก่อน",
+        backgroundColor: Colors.orange.withOpacity(0.8),
+        colorText: Colors.white,
+        duration: Duration(seconds: 2),
+        snackPosition: SnackPosition.BOTTOM,
+      );
       return;
     }
 
@@ -276,23 +363,46 @@ class BluetoothController extends GetxController {
     // End byte
     packet[63] = 0xE1;
 
+    // เก็บข้อมูลคำสั่งที่ส่งไป
+    lastCommandSent.value = commandByte;
+    isWaitingResponse.value = true;
+
+    // ตั้ง timeout สำหรับการรอการตอบกลับ (10 วินาที)
+    _responseTimeout?.cancel();
+    _responseTimeout = Timer(Duration(seconds: 10), () {
+      if (isWaitingResponse.value) {
+        isWaitingResponse.value = false;
+        Get.snackbar(
+          "⏰ หมดเวลารอ",
+          "❌ ไม่ได้รับการตอบกลับจากอุปกรณ์\nลองส่งคำสั่งใหม่อีกครั้ง",
+          backgroundColor: Colors.red.withOpacity(0.8),
+          colorText: Colors.white,
+          duration: Duration(seconds: 4),
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+    });
+
     bluetoothService.connection!.output.add(Uint8List.fromList(packet));
     bluetoothService.connection!.output.allSent.then((_) {
-      print("Sent command: $commandByte");
+      print("Sent command: $commandByte (0x${commandByte.toRadixString(16).padLeft(2, '0').toUpperCase()})");
       
       // แสดง snackbar เมื่อส่งเสร็จ
       if (successMessage != null) {
         Get.snackbar(
-          "สำเร็จ", 
+          "📤 ส่งคำสั่งแล้ว", 
           successMessage,
-          backgroundColor: Colors.green.withOpacity(0.8),
+          backgroundColor: Colors.blue.withOpacity(0.8),
           colorText: Colors.white,
           duration: Duration(seconds: 2),
           snackPosition: SnackPosition.BOTTOM,
         );
       }
     }).catchError((error) {
-      // แสดง error หากส่งไม่สำเร็จ
+      // หยุดการรอและแสดง error
+      isWaitingResponse.value = false;
+      _responseTimeout?.cancel();
+      
       Get.snackbar(
         "ผิดพลาด", 
         "ไม่สามารถส่งคำสั่งได้: $error",
@@ -311,10 +421,32 @@ class BluetoothController extends GetxController {
     sendCommand(0x01, successMessage: "🔌 ส่งคำสั่ง Activate Connect แล้ว กรุณารอการตอบกลับ...");
   }
 
+  // ฟังก์ชันสำหรับส่งคำสั่งยืนยัน
+  void sendAcknowledge() {
+    sendCommand(0xFF, successMessage: "📨 ส่งยืนยันการรับข้อมูล (ACK)");
+  }
+  
+  // ฟังก์ชันสำหรับส่งคำสั่งเสร็จสิ้น
+  void sendComplete() {
+    sendCommand(0x00, successMessage: "✅ ส่งสัญญาณเสร็จสิ้น (COMPLETE)");
+  }
+  
+  // ฟังก์ชันสำหรับหยุดการทำงานของอุปกรณ์
+  void sendStop() {
+    sendCommand(0xEE, successMessage: "🛑 ส่งคำสั่งหยุด (STOP)");
+  }
+
+  // ฟังก์ชันสำหรับรีเซ็ตสถานะการรอ (public)
+  void resetWaitingState() {
+    isWaitingResponse.value = false;
+    _responseTimeout?.cancel();
+  }
+
   // ฟังก์ชันสำหรับการทดสอบ - บังคับให้ถือว่าได้รับการตอบกลับ
   void forceActivateResponse() {
     isConnectResponseReceived.value = true;
     canActivate.value = true;
+    resetWaitingState(); // รีเซ็ตสถานะการรอด้วย
     
     Get.snackbar(
       "⚠️ บังคับเปิดใช้งาน",
@@ -343,12 +475,18 @@ class BluetoothController extends GetxController {
 
   void disconnect() async {
     _dataSubscription?.cancel();
+    _responseTimeout?.cancel();
+    
+    // รีเซ็ตสถานะทั้งหมด
+    isWaitingResponse.value = false;
+    isConnectResponseReceived.value = false;
+    canActivate.value = false;
+    lastCommandSent.value = 0;
+    
     startScan();
     await bluetoothService.disconnect();
     isConnected.value = false;
     selectedDevice.value = null;
-    isConnectResponseReceived.value = false;
-    canActivate.value = false;
   }
 
   Future<void> saveLastConnectedDevice(String address) async {
