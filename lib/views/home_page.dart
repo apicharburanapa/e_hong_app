@@ -67,6 +67,17 @@ class HomePage extends StatelessWidget {
                           ),
                           textAlign: TextAlign.center,
                         ),
+                        SizedBox(height: 8),
+                        Text(
+                          "สถานะ: ${btController.bluetoothService.connection?.isConnected == true ? 'เชื่อมต่อแล้ว' : 'ไม่ได้เชื่อมต่อ'}",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: btController.bluetoothService.connection?.isConnected == true 
+                                ? Colors.green[600] 
+                                : Colors.red[600],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
                       ],
                     ),
                   ),
@@ -74,7 +85,7 @@ class HomePage extends StatelessWidget {
                   SizedBox(height: 30),
                   
                   // ขั้นตอนที่ 1: Connect
-                  SizedBox(
+                  Container(
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: btController.isConnectResponseReceived.value 
@@ -101,79 +112,6 @@ class HomePage extends StatelessWidget {
                       ),
                     ),
                   ),
-                  
-                  SizedBox(height: 10),
-                  
-                  // ปุ่มสำหรับ debug และทดสอบ
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            // ส่งคำสั่งทดสอบเพื่อดูการตอบกลับ
-                            btController.sendCommand(0x99, successMessage: "🔧 ส่งคำสั่งทดสอบ (0x99)");
-                          },
-                          icon: Icon(Icons.bug_report, size: 16),
-                          label: Text(
-                            "🔧 ทดสอบ",
-                            style: TextStyle(fontSize: 12),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.orange,
-                            side: BorderSide(color: Colors.orange),
-                            padding: EdgeInsets.symmetric(vertical: 8),
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: btController.forceActivateResponse,
-                          icon: Icon(Icons.settings, size: 16),
-                          label: Text(
-                            "⚙️ บังคับเปิด",
-                            style: TextStyle(fontSize: 12),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.amber,
-                            side: BorderSide(color: Colors.amber),
-                            padding: EdgeInsets.symmetric(vertical: 8),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  
-                  SizedBox(height: 10),
-                  
-                  // ปุ่มรีเซ็ตสถานะ
-                  if (btController.isWaitingResponse.value)
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          btController.resetWaitingState();
-                          Get.snackbar(
-                            "🔄 รีเซ็ต",
-                            "รีเซ็ตสถานะการรอการตอบกลับแล้ว",
-                            backgroundColor: Colors.grey.withOpacity(0.8),
-                            colorText: Colors.white,
-                            duration: Duration(seconds: 2),
-                            snackPosition: SnackPosition.BOTTOM,
-                          );
-                        },
-                        icon: Icon(Icons.refresh, size: 16),
-                        label: Text(
-                          "🔄 หยุดรอการตอบกลับ",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.grey[700],
-                          side: BorderSide(color: Colors.grey),
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                        ),
-                      ),
-                    ),
                   
                   SizedBox(height: 15),
                   
@@ -210,8 +148,10 @@ class HomePage extends StatelessWidget {
                       ),
                     ),
                   
+                  SizedBox(height: 15),
+                  
                   // ขั้นตอนที่ 2: Activate Now
-                  SizedBox(
+                  Container(
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: btController.canActivate.value 
@@ -236,6 +176,70 @@ class HomePage extends StatelessWidget {
                   ),
                   
                   SizedBox(height: 20),
+                  
+                  // // ปุ่มควบคุมอุปกรณ์เพิ่มเติม
+                  // Text(
+                  //   "🔧 ควบคุมอุปกรณ์:",
+                  //   style: TextStyle(
+                  //     fontSize: 14,
+                  //     fontWeight: FontWeight.bold,
+                  //     color: Colors.grey[700],
+                  //   ),
+                  // ),
+                  
+                  // SizedBox(height: 10),
+                  
+                  // Row(
+                  //   children: [
+                  //     Expanded(
+                  //       child: ElevatedButton.icon(
+                  //         onPressed: btController.sendAcknowledge,
+                  //         icon: Icon(Icons.check, size: 16),
+                  //         label: Text(
+                  //           "📨 ACK",
+                  //           style: TextStyle(fontSize: 12),
+                  //         ),
+                  //         style: ElevatedButton.styleFrom(
+                  //           backgroundColor: Colors.teal,
+                  //           foregroundColor: Colors.white,
+                  //           padding: EdgeInsets.symmetric(vertical: 8),
+                  //         ),
+                  //       ),
+                  //     ),
+                  //     SizedBox(width: 8),
+                  //     Expanded(
+                  //       child: ElevatedButton.icon(
+                  //         onPressed: btController.sendComplete,
+                  //         icon: Icon(Icons.done_all, size: 16),
+                  //         label: Text(
+                  //           "✅ DONE",
+                  //           style: TextStyle(fontSize: 12),
+                  //         ),
+                  //         style: ElevatedButton.styleFrom(
+                  //           backgroundColor: Colors.green[600],
+                  //           foregroundColor: Colors.white,
+                  //           padding: EdgeInsets.symmetric(vertical: 8),
+                  //         ),
+                  //       ),
+                  //     ),
+                  //     SizedBox(width: 8),
+                  //     Expanded(
+                  //       child: ElevatedButton.icon(
+                  //         onPressed: btController.sendStop,
+                  //         icon: Icon(Icons.stop, size: 16),
+                  //         label: Text(
+                  //           "🛑 STOP",
+                  //           style: TextStyle(fontSize: 12),
+                  //         ),
+                  //         style: ElevatedButton.styleFrom(
+                  //           backgroundColor: Colors.red[600],
+                  //           foregroundColor: Colors.white,
+                  //           padding: EdgeInsets.symmetric(vertical: 8),
+                  //         ),
+                  //       ),
+                  //     ),
+                  //   ],
+                  // ),
                   
                   // คำแนะนำ
                   Container(

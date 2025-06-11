@@ -233,14 +233,14 @@ class BluetoothController extends GetxController {
     isWaitingResponse.value = false;
     _responseTimeout?.cancel();
     
-    Get.snackbar(
-      "⚡ Activate สำเร็จ",
-      "✅ อุปกรณ์ตอบกลับคำสั่ง Activate Now แล้ว\n($responseType)\n💡 ลองกดปุ่ม ACK, DONE หรือ STOP",
-      backgroundColor: Colors.purple.withOpacity(0.8),
-      colorText: Colors.white,
-      duration: Duration(seconds: 5),
-      snackPosition: SnackPosition.BOTTOM,
-    );
+    // Get.snackbar(
+    //   "⚡ Activate สำเร็จ",
+    //   "✅ อุปกรณ์ตอบกลับคำสั่ง Activate Now แล้ว\n($responseType)\n💡 ลองกดปุ่ม ACK, DONE หรือ STOP",
+    //   backgroundColor: Colors.purple.withOpacity(0.8),
+    //   colorText: Colors.white,
+    //   duration: Duration(seconds: 5),
+    //   snackPosition: SnackPosition.BOTTOM,
+    // );
   }
   
   // ฟังก์ชันจัดการการตอบกลับจากคำสั่งทดสอบ
@@ -325,8 +325,32 @@ class BluetoothController extends GetxController {
   }
 
   void sendCommand(int commandByte, {String? successMessage}) {
-    if (bluetoothService.connection == null) {
-      Get.snackbar("ยังไม่ได้เชื่อมต่อ", "กรุณาเชื่อมต่อกับอุปกรณ์ก่อน");
+    // ตรวจสอบการเชื่อมต่อ Bluetooth อย่างละเอียด
+    if (bluetoothService.connection == null || !bluetoothService.connection!.isConnected) {
+      Get.snackbar(
+        "❌ ยังไม่ได้เชื่อมต่อ", 
+        "กรุณาเชื่อมต่อกับอุปกรณ์ก่อนส่งคำสั่ง",
+        backgroundColor: Colors.red.withOpacity(0.8),
+        colorText: Colors.white,
+        duration: Duration(seconds: 3),
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+
+    // ตรวจสอบสถานะการเชื่อมต่อเพิ่มเติม
+    if (!isConnected.value) {
+      Get.snackbar(
+        "❌ การเชื่อมต่อขาดหาย", 
+        "การเชื่อมต่อ Bluetooth หลุด กรุณาเชื่อมต่อใหม่",
+        backgroundColor: Colors.orange.withOpacity(0.8),
+        colorText: Colors.white,
+        duration: Duration(seconds: 3),
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      // รีเซ็ตสถานะ
+      isConnected.value = false;
+      selectedDevice.value = null;
       return;
     }
 
@@ -343,75 +367,104 @@ class BluetoothController extends GetxController {
       return;
     }
 
-    List<int> packet = List.filled(64, 0);
+    try {
+      List<int> packet = List.filled(64, 0);
 
-    // Header
-    packet[0] = 0xA1;
-    packet[1] = 0x11;
-    packet[2] = 0xF1;
+      // Header
+      packet[0] = 0xA1;
+      packet[1] = 0x11;
+      packet[2] = 0xF1;
 
-    // Command
-    packet[3] = commandByte;
+      // Command
+      packet[3] = commandByte;
 
-    // Checksum (sum of byte 0..61)
-    int sum = 0;
-    for (int i = 0; i < 62; i++) {
-      sum += packet[i];
-    }
-    packet[62] = sum & 0xFF;
+      // Checksum (sum of byte 0..61)
+      int sum = 0;
+      for (int i = 0; i < 62; i++) {
+        sum += packet[i];
+      }
+      packet[62] = sum & 0xFF;
 
-    // End byte
-    packet[63] = 0xE1;
+      // End byte
+      packet[63] = 0xE1;
 
-    // เก็บข้อมูลคำสั่งที่ส่งไป
-    lastCommandSent.value = commandByte;
-    isWaitingResponse.value = true;
+      // เก็บข้อมูลคำสั่งที่ส่งไป
+      lastCommandSent.value = commandByte;
+      isWaitingResponse.value = true;
 
-    // ตั้ง timeout สำหรับการรอการตอบกลับ (10 วินาที)
-    _responseTimeout?.cancel();
-    _responseTimeout = Timer(Duration(seconds: 10), () {
-      if (isWaitingResponse.value) {
+      // ตั้ง timeout สำหรับการรอการตอบกลับ (10 วินาที)
+      _responseTimeout?.cancel();
+      _responseTimeout = Timer(Duration(seconds: 10), () {
+        if (isWaitingResponse.value) {
+          isWaitingResponse.value = false;
+          Get.snackbar(
+            "⏰ หมดเวลารอ",
+            "❌ ไม่ได้รับการตอบกลับจากอุปกรณ์\nลองส่งคำสั่งใหม่อีกครั้ง",
+            backgroundColor: Colors.red.withOpacity(0.8),
+            colorText: Colors.white,
+            duration: Duration(seconds: 4),
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        }
+      });
+
+      // ส่งข้อมูลและจัดการ error
+      bluetoothService.connection!.output.add(Uint8List.fromList(packet));
+      bluetoothService.connection!.output.allSent.then((_) {
+        print("Sent command: $commandByte (0x${commandByte.toRadixString(16).padLeft(2, '0').toUpperCase()})");
+        
+        // แสดง snackbar เมื่อส่งเสร็จ
+        if (successMessage != null) {
+          Get.snackbar(
+            "📤 ส่งคำสั่งแล้ว", 
+            successMessage,
+            backgroundColor: Colors.blue.withOpacity(0.8),
+            colorText: Colors.white,
+            duration: Duration(seconds: 2),
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        }
+      }).catchError((error) {
+        // หยุดการรอและแสดง error
         isWaitingResponse.value = false;
+        _responseTimeout?.cancel();
+        
+        print("Error sending command: $error");
+        
         Get.snackbar(
-          "⏰ หมดเวลารอ",
-          "❌ ไม่ได้รับการตอบกลับจากอุปกรณ์\nลองส่งคำสั่งใหม่อีกครั้ง",
+          "❌ ส่งคำสั่งไม่สำเร็จ", 
+          "ไม่สามารถส่งคำสั่งได้: $error\nลองเชื่อมต่อใหม่",
           backgroundColor: Colors.red.withOpacity(0.8),
           colorText: Colors.white,
           duration: Duration(seconds: 4),
           snackPosition: SnackPosition.BOTTOM,
         );
-      }
-    });
-
-    bluetoothService.connection!.output.add(Uint8List.fromList(packet));
-    bluetoothService.connection!.output.allSent.then((_) {
-      print("Sent command: $commandByte (0x${commandByte.toRadixString(16).padLeft(2, '0').toUpperCase()})");
+        
+        // รีเซ็ตการเชื่อมต่อ
+        isConnected.value = false;
+        selectedDevice.value = null;
+      });
       
-      // แสดง snackbar เมื่อส่งเสร็จ
-      if (successMessage != null) {
-        Get.snackbar(
-          "📤 ส่งคำสั่งแล้ว", 
-          successMessage,
-          backgroundColor: Colors.blue.withOpacity(0.8),
-          colorText: Colors.white,
-          duration: Duration(seconds: 2),
-          snackPosition: SnackPosition.BOTTOM,
-        );
-      }
-    }).catchError((error) {
-      // หยุดการรอและแสดง error
+    } catch (e) {
+      // จัดการ error ที่เกิดขึ้นก่อนส่งข้อมูล
       isWaitingResponse.value = false;
       _responseTimeout?.cancel();
       
+      print("Exception in sendCommand: $e");
+      
       Get.snackbar(
-        "ผิดพลาด", 
-        "ไม่สามารถส่งคำสั่งได้: $error",
+        "❌ เกิดข้อผิดพลาด", 
+        "ไม่สามารถส่งคำสั่งได้: $e",
         backgroundColor: Colors.red.withOpacity(0.8),
         colorText: Colors.white,
-        duration: Duration(seconds: 3),
+        duration: Duration(seconds: 4),
         snackPosition: SnackPosition.BOTTOM,
       );
-    });
+      
+      // รีเซ็ตสถานะการเชื่อมต่อ
+      isConnected.value = false;
+      selectedDevice.value = null;
+    }
   }
 
   // แก้ไขฟังก์ชัน activateConnect เพื่อรีเซ็ตสถานะ
@@ -502,18 +555,56 @@ class BluetoothController extends GetxController {
   void connectToDevice(BluetoothDevice device) async {
     try {
       isConnecting.value = true;
+      
+      // ตัดการเชื่อมต่อเดิม (ถ้ามี)
+      if (bluetoothService.connection != null) {
+        await bluetoothService.disconnect();
+      }
+      
+      // เชื่อมต่อใหม่
       await bluetoothService.connect(device);
-      selectedDevice.value = device;
-      isConnected.value = true;
+      
+      // ตรวจสอบว่าเชื่อมต่อสำเร็จจริงๆ
+      if (bluetoothService.connection != null && bluetoothService.connection!.isConnected) {
+        selectedDevice.value = device;
+        isConnected.value = true;
+        isConnectResponseReceived.value = false;
+        canActivate.value = false;
+
+        // เริ่มฟังข้อมูลที่ส่งกลับมา
+        _startListeningForData();
+
+        await saveLastConnectedDevice(device.address);
+        
+        Get.snackbar(
+          "✅ เชื่อมต่อสำเร็จ",
+          "เชื่อมต่อกับ ${device.name ?? 'Unknown'} สำเร็จแล้ว",
+          backgroundColor: Colors.green.withOpacity(0.8),
+          colorText: Colors.white,
+          duration: Duration(seconds: 3),
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      } else {
+        throw Exception("ไม่สามารถสร้างการเชื่อมต่อได้");
+      }
+      
+    } catch (e) {
+      print("Connection error: $e");
+      
+      // รีเซ็ตสถานะเมื่อเชื่อมต่อไม่สำเร็จ
+      isConnected.value = false;
+      selectedDevice.value = null;
       isConnectResponseReceived.value = false;
       canActivate.value = false;
-
-      // เริ่มฟังข้อมูลที่ส่งกลับมา
-      _startListeningForData();
-
-      await saveLastConnectedDevice(device.address);
-    } catch (e) {
-      Get.snackbar("เชื่อมต่อไม่สำเร็จ", e.toString());
+      
+      Get.snackbar(
+        "❌ เชื่อมต่อไม่สำเร็จ", 
+        "ไม่สามารถเชื่อมต่อกับ ${device.name ?? 'อุปกรณ์'} ได้\nError: $e",
+        backgroundColor: Colors.red.withOpacity(0.8),
+        colorText: Colors.white,
+        duration: Duration(seconds: 4),
+        snackPosition: SnackPosition.BOTTOM,
+      );
     } finally {
       isConnecting.value = false;
     }
