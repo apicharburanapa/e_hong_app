@@ -120,30 +120,84 @@ class BluetoothController extends GetxController {
 
   // ฟังก์ชันสำหรับจัดการข้อมูลที่รับเข้ามา
   void _handleReceivedData(Uint8List data) {
-    print("Received data: ${data.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ')}");
+    // แสดงข้อมูลที่รับมาในรูปแบบ hex
+    String hexData = data.map((b) => b.toRadixString(16).padLeft(2, '0').toUpperCase()).join(' ');
+    print("📥 Received data (${data.length} bytes): $hexData");
     
-    // ตรวจสอบว่าเป็นการตอบกลับจากคำสั่ง Connect หรือไม่
+    // แสดงข้อมูลที่รับมาให้ผู้ใช้เห็น (สำหรับ debug)
+    Get.snackbar(
+      "📥 ข้อมูลที่รับมา",
+      "Length: ${data.length} bytes\nHex: $hexData",
+      backgroundColor: Colors.blue.withOpacity(0.8),
+      colorText: Colors.white,
+      duration: Duration(seconds: 5),
+      snackPosition: SnackPosition.TOP,
+    );
+    
+    // TODO: ปรับแต่งเงื่อนไขตามรูปแบบการตอบกลับจริงของอุปกรณ์
+    // ตัวอย่างการตรวจสอบรูปแบบต่างๆ:
+    
+    // ตัวอย่างที่ 1: ถ้าอุปกรณ์ส่ง packet แบบเดียวกับที่เราส่งไป
     if (data.length >= 4 && 
         data[0] == 0xA1 && 
         data[1] == 0x11 && 
         data[2] == 0xF1 && 
         data[3] == 0x01) { // 0x01 คือ response สำหรับ Connect command
       
-      // ตรวจสอบ checksum ถ้าจำเป็น
       if (_validateChecksum(data)) {
-        isConnectResponseReceived.value = true;
-        canActivate.value = true;
-        
-        Get.snackbar(
-          "เชื่อมต่อสำเร็จ",
-          "✅ อุปกรณ์ตอบกลับแล้ว สามารถใช้งาน Activate ได้",
-          backgroundColor: Colors.green.withOpacity(0.8),
-          colorText: Colors.white,
-          duration: Duration(seconds: 3),
-          snackPosition: SnackPosition.BOTTOM,
-        );
+        _handleConnectResponse("รูปแบบ Packet เต็ม");
+        return;
       }
     }
+    
+    // ตัวอย่างที่ 2: ถ้าอุปกรณ์ส่งข้อความแบบ string
+    try {
+      String textData = String.fromCharCodes(data);
+      print("📝 Text data: '$textData'");
+      
+      if (textData.contains("CONNECT_OK") || 
+          textData.contains("OK") || 
+          textData.contains("SUCCESS")) {
+        _handleConnectResponse("รูปแบบ Text: $textData");
+        return;
+      }
+    } catch (e) {
+      // ไม่ใช่ text data
+    }
+    
+    // ตัวอย่างที่ 3: ถ้าอุปกรณ์ส่งแค่ byte เดียว
+    if (data.length == 1) {
+      if (data[0] == 0x01 || data[0] == 0xFF || data[0] == 0xAA) {
+        _handleConnectResponse("รูปแบบ Single Byte: 0x${data[0].toRadixString(16).padLeft(2, '0').toUpperCase()}");
+        return;
+      }
+    }
+    
+    // ตัวอย่างที่ 4: ถ้าอุปกรณ์ส่งแค่ 2-4 bytes
+    if (data.length >= 2 && data.length <= 4) {
+      // เช็ครูปแบบที่เป็นไปได้
+      if (data[0] == 0xAA && data[1] == 0xBB) {
+        _handleConnectResponse("รูปแบบ Header AA BB");
+        return;
+      }
+    }
+    
+    print("⚠️ ไม่สามารถระบุรูปแบบการตอบกลับได้ - กรุณาตรวจสอบข้อมูลด้านบน");
+  }
+  
+  // ฟังก์ชันแยกสำหรับจัดการเมื่อได้รับการตอบกลับที่ถูกต้อง
+  void _handleConnectResponse(String responseType) {
+    isConnectResponseReceived.value = true;
+    canActivate.value = true;
+    
+    Get.snackbar(
+      "เชื่อมต่อสำเร็จ",
+      "✅ อุปกรณ์ตอบกลับแล้ว ($responseType)\nสามารถใช้งาน Activate ได้",
+      backgroundColor: Colors.green.withOpacity(0.8),
+      colorText: Colors.white,
+      duration: Duration(seconds: 4),
+      snackPosition: SnackPosition.BOTTOM,
+    );
   }
 
   // ฟังก์ชันตรวจสอบ checksum
@@ -221,6 +275,21 @@ class BluetoothController extends GetxController {
     isConnectResponseReceived.value = false;
     canActivate.value = false;
     sendCommand(0x01, successMessage: "🔌 ส่งคำสั่ง Activate Connect แล้ว กรุณารอการตอบกลับ...");
+  }
+
+  // ฟังก์ชันสำหรับการทดสอบ - บังคับให้ถือว่าได้รับการตอบกลับ
+  void forceActivateResponse() {
+    isConnectResponseReceived.value = true;
+    canActivate.value = true;
+    
+    Get.snackbar(
+      "⚠️ บังคับเปิดใช้งาน",
+      "✅ บังคับให้ปุ่ม Activate Now ใช้งานได้\n(สำหรับการทดสอบ)",
+      backgroundColor: Colors.amber.withOpacity(0.8),
+      colorText: Colors.white,
+      duration: Duration(seconds: 3),
+      snackPosition: SnackPosition.BOTTOM,
+    );
   }
 
   void activateNow() {

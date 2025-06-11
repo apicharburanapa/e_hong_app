@@ -102,6 +102,48 @@ class HomePage extends StatelessWidget {
                     ),
                   ),
                   
+                  SizedBox(height: 10),
+                  
+                  // ปุ่มสำหรับ debug และทดสอบ
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            // ส่งคำสั่งทดสอบเพื่อดูการตอบกลับ
+                            btController.sendCommand(0x99, successMessage: "🔧 ส่งคำสั่งทดสอบ (0x99)");
+                          },
+                          icon: Icon(Icons.bug_report, size: 16),
+                          label: Text(
+                            "🔧 ทดสอบ",
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.orange,
+                            side: BorderSide(color: Colors.orange),
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: btController.forceActivateResponse,
+                          icon: Icon(Icons.settings, size: 16),
+                          label: Text(
+                            "⚙️ บังคับเปิด",
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.amber,
+                            side: BorderSide(color: Colors.amber),
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  
                   SizedBox(height: 15),
                   
                   // แสดงสถานะการรอ response
