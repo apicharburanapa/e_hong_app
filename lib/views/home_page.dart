@@ -18,10 +18,6 @@ class HomePage extends StatelessWidget {
             icon: Icon(Icons.logout),
             onPressed: () => authController.logout(),
           ),
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: btController.startScan,
-          ),
         ],
       ),
       body: Obx(() {
