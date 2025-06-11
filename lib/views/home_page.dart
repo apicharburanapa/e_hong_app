@@ -59,7 +59,9 @@ class HomePage extends StatelessWidget {
                              color: Colors.green, size: 32),
                         SizedBox(height: 8),
                         Text(
-                          "✅ เชื่อมต่อกับ: ${btController.selectedDevice.value?.name ?? 'Unknown'}",
+                          btController.selectedDevice.value?.name?.isNotEmpty == true
+                              ? "✅ เชื่อมต่อกับ: ${btController.selectedDevice.value!.name}"
+                              : "✅ เชื่อมต่อกับ: ${btController.selectedDevice.value?.address ?? 'อุปกรณ์'}",
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -177,17 +179,17 @@ class HomePage extends StatelessWidget {
                   
                   SizedBox(height: 20),
                   
-                  // // ปุ่มควบคุมอุปกรณ์เพิ่มเติม
-                  // Text(
-                  //   "🔧 ควบคุมอุปกรณ์:",
-                  //   style: TextStyle(
-                  //     fontSize: 14,
-                  //     fontWeight: FontWeight.bold,
-                  //     color: Colors.grey[700],
-                  //   ),
-                  // ),
+                  // ปุ่มควบคุมอุปกรณ์เพิ่มเติม
+                  Text(
+                    "🔧 ควบคุมอุปกรณ์:",
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[700],
+                    ),
+                  ),
                   
-                  // SizedBox(height: 10),
+                  SizedBox(height: 10),
                   
                   // Row(
                   //   children: [
@@ -296,64 +298,112 @@ class HomePage extends StatelessWidget {
                 padding: EdgeInsets.all(16),
                 margin: EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
+                  color: btController.isConnecting.value 
+                      ? Colors.orange.withOpacity(0.1)
+                      : Colors.blue.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                  border: Border.all(
+                    color: btController.isConnecting.value 
+                        ? Colors.orange.withOpacity(0.3)
+                        : Colors.blue.withOpacity(0.3)
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.bluetooth_searching, color: Colors.blue),
+                    btController.isConnecting.value
+                        ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                            ),
+                          )
+                        : Icon(Icons.bluetooth_searching, color: Colors.blue),
                     SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        "🔍 ค้นหาอุปกรณ์ Bluetooth ใกล้เคียง",
+                        btController.isConnecting.value
+                            ? "🔄 กำลังค้นหาอุปกรณ์..."
+                            : "🔍 ค้นหาอุปกรณ์ Bluetooth ใกล้เคียง",
                         style: TextStyle(
-                          color: Colors.blue[700],
+                          color: btController.isConnecting.value 
+                              ? Colors.orange[700]
+                              : Colors.blue[700],
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
+                    if (!btController.isConnecting.value)
+                      IconButton(
+                        onPressed: btController.startScan,
+                        icon: Icon(Icons.refresh, color: Colors.blue),
+                        tooltip: "รีเฟรช",
+                      ),
                   ],
                 ),
               ),
               Expanded(
-                child: btController.devices.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.bluetooth_disabled,
-                              size: 48,
-                              color: Colors.grey,
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    // เรียกฟังก์ชันสแกนใหม่
+                    btController.startScan();
+                    // รอสักครู่เพื่อให้การสแกนเริ่มต้น
+                    await Future.delayed(Duration(milliseconds: 500));
+                  },
+                  color: Colors.blue,
+                  backgroundColor: Colors.white,
+                  child: btController.devices.isEmpty
+                      ? SingleChildScrollView(
+                          physics: AlwaysScrollableScrollPhysics(),
+                          child: Container(
+                            height: MediaQuery.of(context).size.height * 0.6,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.bluetooth_disabled,
+                                  size: 48,
+                                  color: Colors.grey,
+                                ),
+                                SizedBox(height: 16),
+                                Text(
+                                  "ไม่พบอุปกรณ์",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  "ลากลงเพื่อรีเฟรช",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                                SizedBox(height: 16),
+                                TextButton.icon(
+                                  onPressed: btController.startScan,
+                                  icon: Icon(Icons.refresh),
+                                  label: Text("ค้นหาใหม่"),
+                                ),
+                              ],
                             ),
-                            SizedBox(height: 16),
-                            Text(
-                              "ไม่พบอุปกรณ์",
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            TextButton.icon(
-                              onPressed: btController.startScan,
-                              icon: Icon(Icons.refresh),
-                              label: Text("ค้นหาใหม่"),
-                            ),
-                          ],
+                          ),
+                        )
+                      : ListView.builder(
+                          physics: AlwaysScrollableScrollPhysics(),
+                          itemCount: btController.devices.length,
+                          itemBuilder: (context, index) {
+                            final device = btController.devices[index];
+                            return DeviceTile(
+                              device: device,
+                              onTap: () => btController.connectToDevice(device),
+                            );
+                          },
                         ),
-                      )
-                    : ListView.builder(
-                        itemCount: btController.devices.length,
-                        itemBuilder: (context, index) {
-                          final device = btController.devices[index];
-                          return DeviceTile(
-                            device: device,
-                            onTap: () => btController.connectToDevice(device),
-                          );
-                        },
-                      ),
+                ),
               ),
             ],
           );
